@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0e1726" />
+    <title>MarkNote · AI Markdown 笔记</title>
+    <link rel="stylesheet" href="vendor/katex/katex.min.css" />
+    <link rel="stylesheet" href="vendor/highlight/github-dark.min.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <script defer src="vendor/marked.min.js"></script>
+    <script defer src="vendor/purify.min.js"></script>
+    <script defer src="vendor/katex/katex.min.js"></script>
+    <script defer src="vendor/katex/auto-render.min.js"></script>
+    <script defer src="vendor/highlight/highlight.min.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="M8 5.5h11.5L25 11v15.5H8V5.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+              <path d="M19 5.5V11h6M12 16h9M12 20h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </div>
+          <div>
+            <div class="brand-name">MarkNote</div>
+            <div class="brand-subtitle">AI Markdown 笔记</div>
+          </div>
+        </div>
+
+        <div class="workspace-box">
+          <div class="workspace-box-head">
+            <span class="side-label">当前工作区</span>
+            <span class="workspace-status-dot" id="workspaceStatusDot"></span>
+          </div>
+          <select id="workspaceSelect" class="workspace-select" aria-label="选择工作区">
+            <option value="">本地草稿（未选择文件夹）</option>
+          </select>
+          <button class="workspace-folder-button" type="button" data-action="select-workspace">
+            <span>＋</span> 选择或创建本地文件夹
+          </button>
+          <div id="workspacePath" class="workspace-path">笔记只保存在浏览器中</div>
+        </div>
+
+        <div class="side-section">
+          <div class="side-label">笔记</div>
+          <button class="side-item active" type="button" data-action="focus-editor">
+            <span class="side-icon">✦</span>
+            当前草稿
+            <span class="side-item-dot"></span>
+          </button>
+          <button class="side-item" type="button" data-action="new-note">
+            <span class="side-icon">＋</span>
+            新建笔记
+          </button>
+          <div id="notesList" class="notes-list" aria-label="工作区笔记列表"></div>
+        </div>
+
+        <div class="side-section side-help">
+          <div class="side-label">这个工具解决什么</div>
+          <p>把大模型返回的 Markdown 直接粘贴进来，统一处理表格、公式、代码块、图片和链接。</p>
+          <div class="feature-list">
+            <span><i class="feature-dot blue"></i>GFM 表格</span>
+            <span><i class="feature-dot violet"></i>KaTeX 公式</span>
+            <span><i class="feature-dot green"></i>安全 HTML</span>
+          </div>
+        </div>
+
+        <div class="sidebar-bottom">
+          <div class="engine-card">
+            <div class="engine-orb"><span></span></div>
+            <div>
+              <strong>渲染引擎</strong>
+              <small id="engineStatus">正在加载…</small>
+            </div>
+          </div>
+          <div class="sidebar-note">本地自动保存 · 数据留在浏览器</div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumb">
+            <span id="breadcrumbWorkspace">我的笔记</span><span class="crumb-separator">/</span><strong id="breadcrumbNote">当前草稿</strong>
+          </div>
+          <div class="top-actions">
+            <button class="icon-button" type="button" data-action="toggle-theme" title="切换主题" aria-label="切换主题">☼</button>
+            <button class="ghost-button" type="button" data-action="save-note">保存草稿</button>
+            <button class="primary-button" type="button" data-action="download-md">导出 Markdown <span>↓</span></button>
+          </div>
+        </header>
+
+        <section class="intro-row">
+          <div>
+            <div class="eyebrow">PASTE · RENDER · UNDERSTAND</div>
+            <h1>让 AI 输出，保持它本来的样子。</h1>
+            <p>一个为大模型文本准备的 Markdown 笔记工作台。左侧粘贴，右侧即时得到可读、可保存的结果。</p>
+          </div>
+          <div class="intro-actions">
+            <button class="text-button" type="button" data-action="load-sample">查看渲染示例 <span>↗</span></button>
+          </div>
+        </section>
+
+        <section class="workspace-grid">
+          <section class="panel editor-panel">
+            <div class="panel-heading">
+              <div class="panel-title-wrap">
+                <span class="panel-kicker">SOURCE</span>
+                <h2>Markdown 输入</h2>
+              </div>
+              <div class="panel-tools">
+                <button class="mini-button" type="button" data-action="open-file">打开文件</button>
+                <button class="mini-button" type="button" data-action="paste-image-help">粘贴图片</button>
+                <button class="mini-button" type="button" data-action="clear-editor">清空</button>
+                <input id="fileInput" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden />
+              </div>
+            </div>
+            <div class="editor-shell">
+              <div class="line-gutter" id="lineGutter" aria-hidden="true"></div>
+              <textarea id="sourceInput" spellcheck="false" aria-label="Markdown 输入区" placeholder="把 GPT、Claude 或其他模型返回的内容粘贴到这里…"></textarea>
+            </div>
+            <div class="editor-footer">
+              <span id="sourceStats">0 字符 · 0 行</span>
+              <span class="autosave-state"><i></i><span id="saveState">已自动保存</span></span>
+            </div>
+          </section>
+
+          <section class="panel preview-panel">
+            <div class="panel-heading">
+              <div class="panel-title-wrap">
+                <span class="panel-kicker">PREVIEW</span>
+                <h2>渲染预览</h2>
+              </div>
+              <div class="render-badges">
+                <span class="render-badge">GFM</span>
+                <span class="render-badge math-badge">∑ KaTeX</span>
+              </div>
+            </div>
+            <div id="preview" class="markdown-body" aria-live="polite"></div>
+            <div class="preview-footer">
+              <span id="renderState"><i class="status-dot"></i>实时渲染</span>
+              <button class="mini-button" type="button" data-action="export-html">导出 HTML</button>
+              <button class="mini-button pdf-button" type="button" data-action="export-pdf">导出 PDF</button>
+            </div>
+          </section>
+        </section>
+
+        <section class="diagnostics-panel">
+          <div class="diagnostics-heading">
+            <div>
+              <span class="panel-kicker">DIAGNOSTICS</span>
+              <h2>渲染诊断</h2>
+            </div>
+            <label class="switch-row">
+              <span>AI 兼容模式</span>
+              <input id="compatToggle" type="checkbox" checked />
+              <span class="switch" aria-hidden="true"></span>
+            </label>
+          </div>
+          <div id="diagnosticsList" class="diagnostics-list"></div>
+          <div class="diagnostics-tip">
+            <span class="tip-icon">i</span>
+            <span>标准公式写法：行内用 <code>$a^2$</code>，独立公式用 <code>$$...$$</code>。兼容模式会尝试修复模型常见的裸方括号公式。</span>
+          </div>
+        </section>
+
+        <footer class="app-footer">
+          <span>MarkNote v0.1 · 为 AI 文本而生</span>
+          <span><button class="footer-link" type="button" data-action="copy-fixed">复制兼容后的 Markdown</button></span>
+        </footer>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
