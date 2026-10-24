@@ -3,7 +3,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="${ROOT}/dist/MarkNote.app"
+APP="${ROOT}/MarkNote.app"
+ZIP="${ROOT}/dist/MarkNote-macOS-standalone.zip"
+RELEASE_ZIP="${ROOT}/MarkNote-macOS-standalone.zip"
 RESOURCES="${APP}/Contents/Resources"
 CACHE_ROOT="/private/tmp/marknote-swift-cache"
 NATIVE_BUILD="${CACHE_ROOT}/native"
@@ -14,15 +16,17 @@ mkdir -p "${NATIVE_BUILD}" "${CACHE_ROOT}/arm64-module-cache" "${CACHE_ROOT}/arm
 /usr/bin/swiftc -O -parse-as-library -target arm64-apple-macosx10.15 \
   -Xcc -fmodules-cache-path="${CACHE_ROOT}/arm64-module-cache" \
   -module-cache-path "${CACHE_ROOT}/arm64-swift-module-cache" \
-  -framework Cocoa -framework WebKit \
+  -framework Cocoa -framework WebKit -framework PDFKit \
   "${ROOT}/native/MarkNoteNative.swift" \
+  "${ROOT}/tests/StorageCompatibility.swift" \
   -o "${NATIVE_BUILD}/MarkNote-arm64"
 
 /usr/bin/swiftc -O -parse-as-library -target x86_64-apple-macosx10.15 \
   -Xcc -fmodules-cache-path="${CACHE_ROOT}/x86-module-cache" \
   -module-cache-path "${CACHE_ROOT}/x86-swift-module-cache" \
-  -framework Cocoa -framework WebKit \
+  -framework Cocoa -framework WebKit -framework PDFKit \
   "${ROOT}/native/MarkNoteNative.swift" \
+  "${ROOT}/tests/StorageCompatibility.swift" \
   -o "${NATIVE_BUILD}/MarkNote-x86_64"
 
 /usr/bin/lipo -create \
@@ -30,14 +34,15 @@ mkdir -p "${NATIVE_BUILD}" "${CACHE_ROOT}/arm64-module-cache" "${CACHE_ROOT}/arm
   "${NATIVE_BUILD}/MarkNote-x86_64" \
   -output "${APP}/Contents/MacOS/MarkNote"
 
-cp "${ROOT}/MarkNote.app/Contents/Info.plist" "${APP}/Contents/Info.plist"
 cp "${ROOT}/index.html" "${ROOT}/app.js" "${ROOT}/styles.css" "${RESOURCES}/"
-cp "${ROOT}/MarkNote.app/Contents/Resources/MarkNote.icns" "${RESOURCES}/MarkNote.icns"
-cp "${ROOT}/MarkNote.app/Contents/Resources/MarkNote-icon.png" "${RESOURCES}/MarkNote-icon.png"
+cp "${ROOT}/tests/compatibility.js" "${RESOURCES}/compatibility-tests.js"
 /usr/bin/rsync -a --delete "${ROOT}/vendor/" "${RESOURCES}/vendor/"
 
 /usr/bin/codesign --force --deep --sign - "${APP}"
-/usr/bin/ditto -c -k --sequesterRsrc --keepParent "${APP}" "${ROOT}/dist/MarkNote-macOS-standalone.zip"
+mkdir -p "${ROOT}/dist"
+/usr/bin/ditto -c -k --sequesterRsrc --keepParent "${APP}" "${ZIP}"
+cp "${ZIP}" "${RELEASE_ZIP}"
 
 echo "Built: ${APP}"
-echo "Packaged: ${ROOT}/dist/MarkNote-macOS-standalone.zip"
+echo "Packaged: ${ZIP}"
+echo "Release copy: ${RELEASE_ZIP}"
